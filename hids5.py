@@ -66,6 +66,7 @@ for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
                     print("Found attack in", filepath, "!")
                     print("Attack trace:", current_trace[i:].strip())
                     print("Data trace:", current_trace.strip())
+                    print()
                     break
             if not found_attack:
                 if test(current_trace.strip(), subsequences):
@@ -73,6 +74,7 @@ for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
                     attack_counter += 1
                     print("Found attack in", filepath, "!")
                     print("Data trace:", current_trace.strip())
+                    print()
                 else:
                     trace_list.append([current_trace.strip(), 0])
 
