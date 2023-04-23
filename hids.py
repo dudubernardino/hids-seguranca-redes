@@ -2,6 +2,35 @@ import pandas as pd
 import glob
 from pygtrie import Trie
 
+def get_n_grams(trace, n):
+    """Retorna uma lista de todos os n-grams de tamanho n presentes em trace."""
+    n_grams = []
+    for i in range(len(trace) - n + 1):
+        n_grams.append(trace[i:i+n])
+    return n_grams
+
+def train(sequences, n, f):
+    """Treina o algoritmo com as sequências dadas e retorna um dicionário com as subsequências únicas."""
+    subsequences = {}
+    for sequence in sequences:
+        n_grams = get_n_grams(sequence, n)
+        for n_gram in set(n_grams):
+            if n_grams.count(n_gram) >= f:
+                if n_gram not in subsequences:
+                    subsequences[n_gram] = 1
+                else:
+                    subsequences[n_gram] += 1
+    return subsequences
+
+def test(trace, subsequences):
+    """Testa o algoritmo com a sequência dada e retorna True se um intruso foi detectado."""
+    n_grams = get_n_grams(trace, n)
+    for i in range(len(trace) - n + 1):
+        n_gram = trace[i:i+n]
+        if n_gram not in subsequences:
+            return True
+    return False
+
 # Construa a árvore trie de ataques conhecidos
 attack_trie = Trie()
 for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
@@ -9,10 +38,21 @@ for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
         for line in current_attack:
             attack_trie[line.strip()] = True
 
-attack_counter = 0
-trace_list = []
+# Defina os valores de n e f
+n = 2
+f = 5
 
-# Verifique os arquivos de dados de treinamento em busca de cada ataque
+# Treine o algoritmo com as sequências de treinamento
+normal_traces = []
+for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
+    with open(filepath) as current_file:
+        for current_trace in current_file:
+            normal_traces.append(current_trace.strip())
+subsequences = train(normal_traces, n, f)
+
+# Teste o algoritmo com as sequências de teste
+trace_list = []
+attack_counter = 0
 for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
     with open(filepath) as current_file:
         for current_trace in current_file:
@@ -26,12 +66,19 @@ for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
                     print("Found attack in", filepath, "!")
                     print("Attack trace:", current_trace[i:].strip())
                     print("Data trace:", current_trace.strip())
+                    print()
                     break
             if not found_attack:
-                trace_list.append([current_trace.strip(), 0])
+                if test(current_trace.strip(), subsequences):
+                    trace_list.append([current_trace.strip(), 1])
+                    attack_counter += 1
+                    print("Found attack in", filepath, "!")
+                    print("Data trace:", current_trace.strip())
+                    print()
+                else:
+                    trace_list.append([current_trace.strip(), 0])
 
 Traces = pd.DataFrame(trace_list, columns=['System Calls', 'Malicious'])
 
 print(Traces.sort_values(by=['Malicious'])[-30:])
-
 print('Total Attacks found:', attack_counter)
