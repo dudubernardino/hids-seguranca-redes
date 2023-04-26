@@ -44,7 +44,7 @@ f = 5
 
 # Treine o algoritmo com as sequências de treinamento
 normal_traces = []
-for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
+for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
     with open(filepath) as current_file:
         for current_trace in current_file:
             normal_traces.append(current_trace.strip())
@@ -53,7 +53,7 @@ subsequences = train(normal_traces, n, f)
 # Teste o algoritmo com as sequências de teste
 trace_list = []
 attack_counter = 0
-for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
+for filepath in glob.iglob("Validation_Data_Master/*.txt", recursive=True):
     with open(filepath) as current_file:
         for current_trace in current_file:
             # Pesquise na árvore trie se há um padrão de ataque na linha atual
