@@ -4,9 +4,16 @@ from pygtrie import Trie
 
 def get_n_grams(trace, n):
     """Retorna uma lista de todos os n-grams de tamanho n presentes em trace."""
+    trace_array = [trace]
+    split_traces = trace_array[0].split() 
     n_grams = []
-    for i in range(len(trace) - n + 1):
-        n_grams.append(trace[i:i+n])
+
+    for i in range(0, len(split_traces), n):
+        join_traces = ' '.join(split_traces[i:i+n])
+        n_grams.append(join_traces)
+
+
+    # print('n_grams', n_grams)
     return n_grams
 
 def train(sequences, n, f):
