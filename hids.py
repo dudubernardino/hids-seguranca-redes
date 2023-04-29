@@ -38,9 +38,9 @@ def test(trace, subsequences):
             return True
     return False
 
-# Construa a árvore trie de ataques conhecidos
+# Construa a árvore trie com dados normais
 attack_trie = Trie()
-for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
+for filepath in glob.iglob("Validation_Data_Master/*.txt", recursive=True):
     with open(filepath) as current_attack:
         for line in current_attack:
             attack_trie[line.strip()] = True
@@ -60,7 +60,7 @@ subsequences = train(normal_traces, n, f)
 # Teste o algoritmo com as sequências de teste
 trace_list = []
 attack_counter = 0
-for filepath in glob.iglob("Validation_Data_Master/*.txt", recursive=True):
+for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
     with open(filepath) as current_file:
         for current_trace in current_file:
             # Pesquise na árvore trie se há um padrão de ataque na linha atual
