@@ -52,8 +52,9 @@ def test(trace, subsequences, n_values):
     return False
 
 
-def calcular_eficiencia(tempo_total, num_traces):
-    tempo_medio = tempo_total / num_traces
+def calcular_eficiencia(tempo_total, num_traces_total):
+    """Calcula a eficiência média do processamento por trace."""
+    tempo_medio = tempo_total / num_traces_total
     return tempo_medio
 
 
@@ -94,7 +95,7 @@ for elem in normal:
                 traces.append(('0', trace))
 
 # Comprimentos de n-gram(s) desejados
-n_values = [2, 3, 4, 5]
+n_values = [2]
 
 # Treina o algoritmo
 f = 5  # parâmetro do algoritmo, definindo a frequência mínima necessária para uma subsequência ser considerada frequente

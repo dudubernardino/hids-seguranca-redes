@@ -5,8 +5,9 @@ import time
 
 def get_n_grams(trace, n_values):
     """Returns a list of all n-grams of sizes in n_values present in trace."""
-    trace_array = [trace]
-    split_traces = ' '.join(trace_array[0]).split()
+    if isinstance(trace, list):
+        trace = ' '.join(trace)
+    split_traces = trace.split()
     n_grams = []
 
     for n in n_values:
@@ -33,29 +34,34 @@ def train(sequences, n_values, f):
 def test(trace, subsequences, n_values):
     """Tests the algorithm with the given trace and returns True if an intruder was detected."""
     print("Testing...")
-    n_grams = get_n_grams(trace, n_values)
+    n_grams = []
+    for n in n_values:
+        n_grams += get_n_grams(trace, [n])
+
     for i in range(len(n_grams)):
-        if not subsequences.has_subtrie(n_grams[i]):
-            attack_trace = ' '.join(trace[i:])
-            print("Found attack in trace: ", attack_trace)
-            print()
-            print("Data trace: ", ' '.join(trace))
+        if n_grams[i] not in subsequences:
+            print("Anomaly detected!")
+            print("Found attack in trace: ", trace)
+            print("Data trace: ", n_grams[i])
             return True
-    print("Testing complete.")
+    print("No anomaly detected.")
     return False
 
 
-def calcular_eficiencia(tempo_total, num_traces):
-    tempo_medio = tempo_total / num_traces
+def calcular_eficiencia(tempo_total, num_traces_total):
+    """Calcula a eficiência média do processamento por trace."""
+    tempo_medio = tempo_total / num_traces_total
     return tempo_medio
 
 
 # Read in all system call traces as tuples in the 'traces' list: (type, list of sys call sequence)
 traces = []
+
 # Imports the attack system call traces to the list
 atkbase = "/home/eduardo/desktop/hids-seguranca-redes/Attack_Data_Master/"
 types = ['Adduser', 'Hydra_FTP', 'Hydra_SSH',
          'Java_Meterpreter', 'Meterpreter', 'Web_Shell']
+
 for elem in types:
     for i in range(1, 11):
         path = atkbase + elem + "_" + str(i)
@@ -72,6 +78,7 @@ for elem in types:
 # Imports (appends) the training/test data folders' system call traces
 normal = ("/home/eduardo/desktop/hids-seguranca-redes/Training_Data_Master",
           "/home/eduardo/desktop/hids-seguranca-redes/Validation_Data_Master")
+
 for elem in normal:
     os.chdir(elem)
 
@@ -84,7 +91,7 @@ for elem in normal:
                 traces.append(('0', trace))
 
 # Desired n-gram length(s)
-n_values = [2]
+n_values = [2, 3]
 
 # Train the algorithm
 f = 5
@@ -95,16 +102,14 @@ end_time = time.time()
 tempo_treinamento = end_time - start_time
 num_traces_treinamento = len(traces)
 
-
 # Test the algorithm and measure efficiency
 anomalous_traces = []
-test_path = "/home/eduardo/desktop/hids-seguranca-redes/Validation_Data_Master/UVD-0001.txt"
+test_path = "/home/eduardo/desktop/hids-seguranca-redes/Validation_Data_Master/UVD-0004.txt"
 with open(test_path, 'r') as file:
     mystring = file.read()
     trace = mystring.split()
     start_time = time.time()
-    if test(trace, subsequences, n_values):
-        print("Anomaly detected!")
+    test(trace, subsequences, n_values)
     end_time = time.time()
     tempo_teste = end_time - start_time
     num_traces_teste = 1
