@@ -1,91 +1,108 @@
-import pandas as pd
-import glob
-from pygtrie import Trie
+import os
 
-def get_n_grams(trace, n):
-    """Retorna uma lista de todos os n-grams de tamanho n presentes em trace."""
-    trace_array = [trace]
-    split_traces = trace_array[0].split() 
-    n_grams = []
+# Define uma classe Trie que implementa uma árvore trie
+class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_end = False
 
-    for i in range(0, len(split_traces), n):
-        join_traces = ' '.join(split_traces[i:i+n])
-        n_grams.append(join_traces)
+# Classe Trie que implementa uma árvore trie
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+    # Método para inserir uma palavra na árvore trie
+
+    def insert(self, word):
+        node = self.root
+        for char in word:
+            # Se um caractere não está na lista de filhos de um nó, adiciona ele
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            # Move o ponteiro do nó para o filho com o caractere atual
+            node = node.children[char]
+        # Quando chegar ao final da sequência, define o is_end como True
+        node.is_end = True
+    # Método para buscar uma palavra na árvore trie
+
+    def search(self, word):
+        node = self.root
+        for char in word:
+            # Se um caractere não está na lista de filhos de um nó, a palavra não está na árvore
+            if char not in node.children:
+                return False
+            # Move o ponteiro do nó para o filho com o caractere atual
+            node = node.children[char]
+        # Retorna True se o nó atual representa o final de uma sequência
+        return node.is_end
+
+# Método para ler sequências de um diretório
+# Como a pasta Attack_Data_Master possui outros diretórios diferentes de Training_Data_Master e Validation_Data_Master, o código abaixo verifica se é um diretório ou não para recuperar os dados dos arquivos com extensão .txt. Caso não seja diretório o método faz a mesma ação de recuperar os dados.
+def read_sequences_from_directory(directory_path, valid_extensions=[".txt"]):
+    sequences = []
+    for dirpath, dirnames, filenames in os.walk(directory_path):
+        for filename in filenames:
+            ext = os.path.splitext(filename)[1]
+            if ext not in valid_extensions:
+                continue
+            file_path = os.path.join(dirpath, filename)
+            with open(file_path) as f:
+                for line in f:
+                    sequence = line.strip().split()
+                    sequences.append(sequence)
+    return sequences
 
 
-    # print('n_grams', n_grams)
-    return n_grams
+# Diretórios dos dados
+TRAINING_DIR = 'Training_Data_Master'
+ATTACK_DIR = 'Attack_Data_Master'
 
-def train(sequences, n, f):
-    """Treina o algoritmo com as sequências dadas e retorna um dicionário com as subsequências únicas."""
-    subsequences = {}
-    for sequence in sequences:
-        n_grams = get_n_grams(sequence, n)
-        for n_gram in set(n_grams):
-            if n_grams.count(n_gram) >= f:
-                if n_gram not in subsequences:
-                    subsequences[n_gram] = 1
-                else:
-                    subsequences[n_gram] += 1
-    return subsequences
-
-def test(trace, subsequences):
-    """Testa o algoritmo com a sequência dada e retorna True se um intruso foi detectado."""
-    n_grams = get_n_grams(trace, n)
-    for i in range(len(trace) - n + 1):
-        n_gram = trace[i:i+n]
-        if n_gram not in subsequences:
-            return True
-    return False
-
-# Construa a árvore trie com dados normais
-attack_trie = Trie()
-for filepath in glob.iglob("Validation_Data_Master/*.txt", recursive=True):
-    with open(filepath) as current_attack:
-        for line in current_attack:
-            attack_trie[line.strip()] = True
-
-# Defina os valores de n e f
+# Hiperparâmetros do algoritmo
 n = 2
 f = 5
 
-# Treine o algoritmo com as sequências de treinamento
-normal_traces = []
-for filepath in glob.iglob("Training_Data_Master/*.txt", recursive=True):
-    with open(filepath) as current_file:
-        for current_trace in current_file:
-            normal_traces.append(current_trace.strip())
-subsequences = train(normal_traces, n, f)
+# Pré-processamento dos dados
+training_sequences = read_sequences_from_directory(TRAINING_DIR)
+attack_sequences = read_sequences_from_directory(ATTACK_DIR)
 
-# Teste o algoritmo com as sequências de teste
-trace_list = []
-attack_counter = 0
-for filepath in glob.iglob("Attack_Data_Master/*/*.txt", recursive=True):
-    with open(filepath) as current_file:
-        for current_trace in current_file:
-            # Pesquise na árvore trie se há um padrão de ataque na linha atual
-            found_attack = False
-            for i in range(len(current_trace)):
-                if attack_trie.has_subtrie(current_trace[i:]):
-                    trace_list.append([current_trace.strip(), 1])
-                    found_attack = True
-                    attack_counter += 1
-                    print("Found attack in", filepath, "!")
-                    print("Attack trace:", current_trace[i:].strip())
-                    print("Data trace:", current_trace.strip())
-                    print()
-                    break
-            if not found_attack:
-                if test(current_trace.strip(), subsequences):
-                    trace_list.append([current_trace.strip(), 1])
-                    attack_counter += 1
-                    print("Found attack in", filepath, "!")
-                    print("Data trace:", current_trace.strip())
-                    print()
-                else:
-                    trace_list.append([current_trace.strip(), 0])
+# Fase de treinamento do algoritmo
+trie = Trie()
+for sequence in training_sequences:
+    for i in range(len(sequence) - n + 1):
+        subsequence = tuple(sequence[i:i+n])
+        trie.insert(subsequence)
 
-Traces = pd.DataFrame(trace_list, columns=['System Calls', 'Malicious'])
-
-print(Traces.sort_values(by=['Malicious'])[-30:])
-print('Total Attacks found:', attack_counter)
+# Fase de teste do algoritmo com dados de ataque
+for i, sequence in enumerate(attack_sequences):
+    detected_subsequences = set()
+    for j in range(len(sequence) - n + 1):
+        subsequence = tuple(sequence[j:j+n])
+        for k in range(n):
+            if trie.search(subsequence[k:]):
+                detected_subsequences.add(subsequence[k:])
+        # verifica a frequência de cada subsequência detectada
+        for subseq in detected_subsequences:
+            freq = sum([1 for l in range(len(sequence) - n + 1)
+                       if tuple(sequence[l:l+n]).count(subseq) > 0])
+            if freq >= f and subseq not in detected_subsequences:
+                detected_subsequences.add(subseq)
+        if len(detected_subsequences) > 0:
+            print(f"Sequência {i+1}")
+            print("Ataque detectado na sequência:")
+            # converter a sequência em string
+            sequence_str = ' '.join(str(elem) for elem in sequence)
+            for subsequence in detected_subsequences:
+                # converter a subsequência em string
+                subseq_str = ' '.join(str(elem) for elem in subsequence)
+                # destacar a subsequência na sequência
+                sequence_str = sequence_str.replace(
+                    subseq_str, f"\033[1;31;40m{subseq_str}\033[0m")
+            print(sequence_str)
+            print()
+            break  # interrompe a busca assim que uma sequência é detectada
+    else:  # se o loop for terminar sem ter encontrado um ataque
+        print(f"Sequência {i+1}")
+        print("Ataque não detectado na sequência:")
+        # converter a sequência em string
+        sequence_str = ' '.join(str(elem) for elem in sequence)
+        print(sequence_str)
+        print()
